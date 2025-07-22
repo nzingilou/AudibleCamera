@@ -5,7 +5,7 @@ An accessibility mod for Minecraft that provides an audible camera system for ex
 ## Features
 
 - **Audible Navigation**: Navigate the world using audio feedback
-- **Block Recognition**: Hear block names with spatial audio
+- **Block Recognition**: Hear block names and sounds with spatial audio
 - **Directional Feedback**: Get distance and direction information
 - **Area Scanning**: Scan 3x3x3 areas around your position
 - **Configurable Options**: Toggle various display options
@@ -13,8 +13,9 @@ An accessibility mod for Minecraft that provides an audible camera system for ex
 ## Keybindings
 
 ### Primary Controls
+All of these keys apart from the key to activate the audible camera are only available when the camera is turned on.
 - **X**: Activate/Deactivate Audible Camera
-- **Escape**: Exit camera mode
+- **Escape or X**: Exit camera mode
 - **Arrow Keys**: Navigate horizontally
 - **Page Up/Down**: Navigate vertically
 - **R**: Recenter camera on player
@@ -56,4 +57,4 @@ This project is licensed under the Creative Commons Attribution-NonCommercial-Sh
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues and pull requests. 
+Contributions are welcome! Please feel free to submit suggestions, issues and pull requests. 
