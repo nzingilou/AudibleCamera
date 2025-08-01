@@ -34,15 +34,15 @@ All of these keys apart from the key to activate the audible camera are only ava
 
 ## Installation
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for Minecraft 1.21.5
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for your Minecraft version
 2. Install [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api)
-3. Download the latest release and place it in your `mods` folder
+3. Download the appropriate release for your Minecraft version from the [Releases](https://github.com/nzingilou/audiblecamera/releases) tab and place it in your `mods` folder
 
 ## Requirements
 
-- Minecraft 1.21.5
-- Fabric Loader 0.16.14+
-- Fabric API 0.128.1+
+- Minecraft (check releases for supported versions)
+- Fabric Loader
+- Fabric API
 - Java 21+
 
 ## License
