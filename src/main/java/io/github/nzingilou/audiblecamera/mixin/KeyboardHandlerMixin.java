@@ -15,15 +15,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(KeyboardHandler.class)
 public class KeyboardHandlerMixin {
-    
+
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
     private void keyPress(long window, int key, int scancode, int action, int modifiers, CallbackInfo ci) {
         // PERFECT ZERO-CONFLICT SYSTEM:
         // Camera OFF: Only X key intercepted, everything else passes through
         // Camera ON: ALL mod keys intercepted, other mods see NOTHING
-        
+
         if (action == InputConstants.PRESS || action == InputConstants.RELEASE || action == InputConstants.REPEAT) {
-            
+
             // X key is intercepted EXCEPT when in any GUI
             if (key == InputConstants.KEY_X) {
                 Minecraft client = Minecraft.getInstance();
@@ -31,11 +31,11 @@ public class KeyboardHandlerMixin {
                     // Don't intercept X key if player is in any GUI
                     // Specifically check for chat, inventory, game menu, and cloth config
                     Screen currentScreen = client.screen;
-                    if (currentScreen instanceof ChatScreen || 
-                        currentScreen instanceof AbstractContainerScreen || 
-                        currentScreen instanceof PauseScreen ||
-                        currentScreen.getClass().getName().contains("cloth") ||
-                        currentScreen.getClass().getName().contains("config")) {
+                    if (currentScreen instanceof ChatScreen ||
+                            currentScreen instanceof AbstractContainerScreen ||
+                            currentScreen instanceof PauseScreen ||
+                            currentScreen.getClass().getName().contains("cloth") ||
+                            currentScreen.getClass().getName().contains("config")) {
                         return; // Let the GUI handle the X key
                     }
                 }
@@ -43,7 +43,7 @@ public class KeyboardHandlerMixin {
                 ci.cancel();
                 return;
             }
-            
+
             // When camera is ACTIVE, steal ALL other mod keys
             if (AudibleCameraMod.isCameraActive()) {
                 switch (key) {
@@ -54,8 +54,8 @@ public class KeyboardHandlerMixin {
                     case InputConstants.KEY_RIGHT:
                     case InputConstants.KEY_PAGEUP:
                     case InputConstants.KEY_PAGEDOWN:
-                    
-                    // Configuration F-keys - completely hijacked
+
+                        // Configuration F-keys - completely hijacked
                     case InputConstants.KEY_F4:
                     case InputConstants.KEY_F5:
                     case InputConstants.KEY_F6:
@@ -65,8 +65,8 @@ public class KeyboardHandlerMixin {
                     case InputConstants.KEY_F10:
                     case InputConstants.KEY_F11:
                     case InputConstants.KEY_F12:
-                    
-                    // Core camera controls - completely hijacked
+
+                        // Core camera controls - completely hijacked
                     case InputConstants.KEY_R:
                     case InputConstants.KEY_P:
                     case InputConstants.KEY_ESCAPE:
@@ -75,7 +75,7 @@ public class KeyboardHandlerMixin {
                         return;
                 }
             }
-            
+
             // When camera is INACTIVE, all keys (except X) pass through normally
             // Other mods get F10, R, arrows, etc. exactly as if this mod doesn't exist
         }

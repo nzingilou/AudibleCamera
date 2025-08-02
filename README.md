@@ -1,6 +1,7 @@
 # Audible Camera Mod
 
-An accessibility mod for Minecraft that provides an audible camera system for exploring the world. Designed for blind and visually impaired players, this mod allows you to navigate and hear block names using audio feedback.
+An accessibility mod for Minecraft that provides an audible camera system for exploring the world. Designed for blind
+and visually impaired players, this mod allows you to navigate and hear block names using audio feedback.
 
 ## Features
 
@@ -13,7 +14,9 @@ An accessibility mod for Minecraft that provides an audible camera system for ex
 ## Keybindings
 
 ### Primary Controls
+
 All of these keys apart from the key to activate the audible camera are only available when the camera is turned on.
+
 - **X**: Activate/Deactivate Audible Camera
 - **Escape or X**: Exit camera mode
 - **Arrow Keys**: Navigate horizontally
@@ -22,6 +25,7 @@ All of these keys apart from the key to activate the audible camera are only ava
 - **P**: Toggle pause mode
 
 ### Configuration (F-Keys - Only when camera is active)
+
 - **F4**: Toggle direction mode (absolute/relative)
 - **F5**: Toggle directional announcements
 - **F6**: Toggle start position (eye/feet level)
@@ -36,7 +40,8 @@ All of these keys apart from the key to activate the audible camera are only ava
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) for your Minecraft version
 2. Install [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api)
-3. Download the appropriate release for your Minecraft version from the [Releases](https://github.com/nzingilou/audiblecamera/releases) tab and place it in your `mods` folder
+3. Download the appropriate release for your Minecraft version from
+   the [Releases](https://github.com/nzingilou/audiblecamera/releases) tab and place it in your `mods` folder
 
 ## Requirements
 
@@ -47,9 +52,11 @@ All of these keys apart from the key to activate the audible camera are only ava
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License - see
+the [LICENSE](LICENSE) file for details.
 
 **What this means:**
+
 - ✅ You can share, modify, and contribute to this mod
 - ✅ You must give credit to the original author
 - ❌ You cannot use it commercially without permission

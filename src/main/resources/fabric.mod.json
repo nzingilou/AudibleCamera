@@ -4,7 +4,9 @@
   "version": "${version}",
   "name": "Audible Camera",
   "description": "An accessibility mod that provides an audible camera system for exploring the world. Press C to activate, then use arrow keys to navigate and hear block names. Alt+Up/Down for vertical movement. Designed for blind and visually impaired players.",
-  "authors": ["nzingilou"],
+  "authors": [
+    "nzingilou"
+  ],
   "contact": {
     "homepage": "https://github.com/nzingilou/audiblecamera",
     "sources": "https://github.com/nzingilou/audiblecamera",

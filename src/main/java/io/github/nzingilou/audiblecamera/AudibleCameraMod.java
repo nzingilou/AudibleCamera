@@ -19,7 +19,7 @@ import net.minecraft.world.phys.Vec3;
 import org.lwjgl.glfw.GLFW;
 
 public class AudibleCameraMod implements ClientModInitializer {
-    
+
     // Key bindings
     private static KeyMapping CAMERA_TOGGLE_KEY;
     private static KeyMapping CAMERA_UP_KEY;
@@ -29,7 +29,7 @@ public class AudibleCameraMod implements ClientModInitializer {
     private static KeyMapping CAMERA_FORWARD_KEY;
     private static KeyMapping CAMERA_BACKWARD_KEY;
     private static KeyMapping PAUSE_TOGGLE_KEY;
-    
+
     // F-key bindings for configuration
     private static KeyMapping TOGGLE_START_POSITION_KEY;
     private static KeyMapping TOGGLE_MOVEMENT_MODE_KEY;
@@ -42,18 +42,17 @@ public class AudibleCameraMod implements ClientModInitializer {
     private static KeyMapping CURRENT_POSITION_KEY;
     private static KeyMapping RECENTER_KEY;
     private static KeyMapping CAMERA_EXIT_KEY;
-    
+
     // Camera state - keeping cameraActive static for mixin access, rest instance-based
     private static boolean cameraActive = false;
     private boolean pauseMode = false;
     private boolean gamePaused = false;
     private BlockPos cameraPosition = BlockPos.ZERO;
-    
+
     // Thread management for F9 scanning
     private Thread scanThread = null;
-    
 
-    
+
     // Configuration options - NON-STATIC to prevent persistence bugs
     private boolean startAtHeadLevel = false; // true = head level, false = feet level (default)
     private boolean cardinalDirections = false; // true = only N/S/E/W, false = player facing
@@ -62,20 +61,20 @@ public class AudibleCameraMod implements ClientModInitializer {
     private boolean relativeDirections = false; // true = ahead/behind/left/right, false = north/south/east/west
     private boolean solidBlocksOnly = false;
     private boolean showLightLevel = false; // true = show light levels for safety
-    
+
     // Per-key movement debouncing to prevent spam but allow different directions
     private long lastVerticalMovementTime = 0;
     private long lastForwardBackwardMovementTime = 0;
-    private long lastLeftRightMovementTime = 0; 
+    private long lastLeftRightMovementTime = 0;
     private static final long MOVEMENT_COOLDOWN_MS = 100; // 100ms between same-type movements
-    
+
     // Prevent auto-movement when camera first activates
     private long cameraActivationTime = 0;
     private static final long ACTIVATION_DELAY_MS = 200; // 200ms delay after activation
-    
+
     // X key state tracking (since mixin intercepts it)  
     private boolean xKeyPreviouslyPressed = false;
-    
+
     // State tracking for all intercepted keys (since mixin intercepts them when camera is active)
     private boolean upKeyPreviouslyPressed = false;
     private boolean downKeyPreviouslyPressed = false;
@@ -95,149 +94,149 @@ public class AudibleCameraMod implements ClientModInitializer {
     private boolean f10KeyPreviouslyPressed = false;
     private boolean f11KeyPreviouslyPressed = false;
     private boolean f12KeyPreviouslyPressed = false;
-    
+
     // Helper method for direct GLFW key detection with state tracking (for intercepted keys)
     private boolean wasKeyJustPressed(Minecraft client, int keyCode, boolean[] previousState) {
         if (client.getWindow() == null) return false;
-        
+
         long window = client.getWindow().getWindow();
         boolean currentlyPressed = GLFW.glfwGetKey(window, keyCode) == InputConstants.PRESS;
         boolean wasJustPressed = currentlyPressed && !previousState[0];
         previousState[0] = currentlyPressed;
         return wasJustPressed;
     }
-    
+
     @Override
     public void onInitializeClient() {
         // Register key bindings - perfect zero-conflict system with mixin interception
         CAMERA_TOGGLE_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.toggle", 
-            InputConstants.KEY_X,
-            "category.audiblecamera.main"
+                "key.audiblecamera.toggle",
+                InputConstants.KEY_X,
+                "category.audiblecamera.main"
         ));
-        
+
         CAMERA_UP_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.up", 
-            InputConstants.KEY_PAGEUP,
-            "category.audiblecamera.main"
+                "key.audiblecamera.up",
+                InputConstants.KEY_PAGEUP,
+                "category.audiblecamera.main"
         ));
-        
+
         CAMERA_DOWN_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.down", 
-            InputConstants.KEY_PAGEDOWN,
-            "category.audiblecamera.main"
+                "key.audiblecamera.down",
+                InputConstants.KEY_PAGEDOWN,
+                "category.audiblecamera.main"
         ));
-        
+
         CAMERA_LEFT_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.left", 
-            InputConstants.KEY_LEFT,
-            "category.audiblecamera.main"
+                "key.audiblecamera.left",
+                InputConstants.KEY_LEFT,
+                "category.audiblecamera.main"
         ));
-        
+
         CAMERA_RIGHT_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.right", 
-            InputConstants.KEY_RIGHT,
-            "category.audiblecamera.main"
+                "key.audiblecamera.right",
+                InputConstants.KEY_RIGHT,
+                "category.audiblecamera.main"
         ));
-        
+
         CAMERA_FORWARD_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.forward", 
-            InputConstants.KEY_UP,
-            "category.audiblecamera.main"
+                "key.audiblecamera.forward",
+                InputConstants.KEY_UP,
+                "category.audiblecamera.main"
         ));
-        
+
         CAMERA_BACKWARD_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.backward",
+                "key.audiblecamera.backward",
                 InputConstants.KEY_DOWN,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         PAUSE_TOGGLE_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.pause_toggle",
+                "key.audiblecamera.pause_toggle",
                 InputConstants.KEY_P,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         // F-key configuration bindings (mixin intercepts these when camera active to prevent conflicts)
         TOGGLE_START_POSITION_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.toggle_start",
+                "key.audiblecamera.toggle_start",
                 InputConstants.KEY_F6,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         TOGGLE_MOVEMENT_MODE_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.toggle_movement",
+                "key.audiblecamera.toggle_movement",
                 InputConstants.KEY_F7,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         TOGGLE_COORDINATES_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.toggle_coordinates",
+                "key.audiblecamera.toggle_coordinates",
                 InputConstants.KEY_F8,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         TOGGLE_DIRECTIONS_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.toggle_directions",
+                "key.audiblecamera.toggle_directions",
                 InputConstants.KEY_F5,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         TOGGLE_RELATIVE_DIRECTIONS_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.toggle_relative_directions",
+                "key.audiblecamera.toggle_relative_directions",
                 InputConstants.KEY_F4,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         SOLID_BLOCKS_ONLY_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.solid_blocks_only",
+                "key.audiblecamera.solid_blocks_only",
                 InputConstants.KEY_F11,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         LIGHT_LEVEL_TOGGLE_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.light_level_toggle",
+                "key.audiblecamera.light_level_toggle",
                 InputConstants.KEY_F10,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         SCAN_AREA_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.scan_area",
+                "key.audiblecamera.scan_area",
                 InputConstants.KEY_F9,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         CURRENT_POSITION_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.current_position",
+                "key.audiblecamera.current_position",
                 InputConstants.KEY_F12,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         RECENTER_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.recenter",
+                "key.audiblecamera.recenter",
                 InputConstants.KEY_R,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         // Alternative exit key for safety
         CAMERA_EXIT_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
-            "key.audiblecamera.exit",
+                "key.audiblecamera.exit",
                 InputConstants.KEY_ESCAPE,
-            "category.audiblecamera.main"
+                "category.audiblecamera.main"
         ));
-        
+
         // Register tick event
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // Comprehensive null safety check
             if (client == null || client.player == null || client.level == null) return;
-            
+
             // Handle camera toggle (using direct key detection since mixin intercepts X key)
             boolean xKeyPressed = false;
             if (client.getWindow() != null) {
                 long window = client.getWindow().getWindow();
                 xKeyPressed = GLFW.glfwGetKey(window, InputConstants.KEY_X) == InputConstants.PRESS;
             }
-            
+
             // Don't activate camera if any GUI is open
             if (xKeyPressed && !xKeyPreviouslyPressed && client.screen == null) {
                 if (!cameraActive) {
@@ -252,24 +251,24 @@ public class AudibleCameraMod implements ClientModInitializer {
                         // Announce starting position
                         announceBlock(client, cameraPosition);
                     }
-                                    } else {
-                        // Deactivate camera
-                        cameraActive = false;
-                        if (gamePaused && pauseMode) {
-                            // Unpause if we were in pause mode
-                            client.setScreen(null);
-                            gamePaused = false;
-                        }
-                        if (client.player != null) {
-                            client.player.displayClientMessage(Component.literal("Audible Camera deactivated."), true);
-                            playSound(client, SoundEvents.NOTE_BLOCK_BASS.value(), 1.0f, 0.5f);
-                        }
+                } else {
+                    // Deactivate camera
+                    cameraActive = false;
+                    if (gamePaused && pauseMode) {
+                        // Unpause if we were in pause mode
+                        client.setScreen(null);
+                        gamePaused = false;
                     }
+                    if (client.player != null) {
+                        client.player.displayClientMessage(Component.literal("Audible Camera deactivated."), true);
+                        playSound(client, SoundEvents.NOTE_BLOCK_BASS.value(), 1.0f, 0.5f);
+                    }
+                }
             }
-            
+
             // Update X key state tracking
             xKeyPreviouslyPressed = xKeyPressed;
-            
+
             // Handle Escape key to exit camera (using direct GLFW detection since mixin intercepts it)
             if (cameraActive) {
                 boolean[] escapeState = {escapeKeyPreviouslyPressed};
@@ -290,13 +289,13 @@ public class AudibleCameraMod implements ClientModInitializer {
                     escapeKeyPreviouslyPressed = escapeState[0];
                 }
             }
-            
+
             // Handle configuration toggles and pause (only when camera is active)
             if (cameraActive) {
                 // PERFECT ZERO-CONFLICT SYSTEM: Mixin hijacks ALL these keys when camera is active
                 // Other mods never see F4-F12, arrows, Page Up/Down, R, P, ESC when camera is on
                 // When camera is off, only X key is intercepted - everything else passes through
-                
+
                 // P - Toggle pause mode (using direct GLFW detection since mixin intercepts it)
                 boolean[] pState = {pKeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_P, pState)) {
@@ -322,7 +321,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     pKeyPreviouslyPressed = pState[0];
                 }
-                
+
                 // F-key configuration toggles (using direct GLFW detection since mixin intercepts them)
                 // F6 - Toggle start position
                 boolean[] f6State = {f6KeyPreviouslyPressed};
@@ -337,7 +336,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f6KeyPreviouslyPressed = f6State[0];
                 }
-                
+
                 // F7 - Toggle movement mode
                 boolean[] f7State = {f7KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F7, f7State)) {
@@ -351,7 +350,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f7KeyPreviouslyPressed = f7State[0];
                 }
-                
+
                 // F8 - Toggle coordinates
                 boolean[] f8State = {f8KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F8, f8State)) {
@@ -365,7 +364,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f8KeyPreviouslyPressed = f8State[0];
                 }
-                
+
                 // F5 - Toggle directions
                 boolean[] f5State = {f5KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F5, f5State)) {
@@ -379,7 +378,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f5KeyPreviouslyPressed = f5State[0];
                 }
-                
+
                 // F4 - Toggle relative directions
                 boolean[] f4State = {f4KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F4, f4State)) {
@@ -393,7 +392,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f4KeyPreviouslyPressed = f4State[0];
                 }
-                
+
                 // F11 - Toggle solid blocks only
                 boolean[] f11State = {f11KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F11, f11State)) {
@@ -407,7 +406,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f11KeyPreviouslyPressed = f11State[0];
                 }
-                
+
                 // F10 - Toggle light level announcements
                 boolean[] f10State = {f10KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F10, f10State)) {
@@ -421,7 +420,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f10KeyPreviouslyPressed = f10State[0];
                 }
-                
+
                 // F9 - Scan area
                 boolean[] f9State = {f9KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F9, f9State)) {
@@ -430,7 +429,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 } else {
                     f9KeyPreviouslyPressed = f9State[0];
                 }
-                
+
                 // F12 - Announce current position
                 boolean[] f12State = {f12KeyPreviouslyPressed};
                 if (wasKeyJustPressed(client, InputConstants.KEY_F12, f12State)) {
@@ -440,7 +439,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                     f12KeyPreviouslyPressed = f12State[0];
                 }
             }
-            
+
             // R - Recenter on player (only works when camera is already active)
             if (cameraActive) {
                 boolean[] rState = {rKeyPreviouslyPressed};
@@ -456,24 +455,24 @@ public class AudibleCameraMod implements ClientModInitializer {
                     rKeyPreviouslyPressed = rState[0];
                 }
             }
-            
+
             // Handle camera movement (only when camera is active)
             if (cameraActive) {
                 // Pause is handled by P key toggle - no automatic pausing
-                
+
                 boolean moved = false;
                 BlockPos newPosition = cameraPosition;
-                
+
                 // Smart movement with per-direction debouncing
                 long currentTime = System.currentTimeMillis();
-                
+
                 // Prevent movement immediately after camera activation to avoid auto-movement
                 if (currentTime - cameraActivationTime < ACTIVATION_DELAY_MS) {
                     return; // Skip movement processing for 200ms after activation
                 }
-                
+
                 // BULLETPROOF MOVEMENT LOGIC - using direct GLFW detection since mixin intercepts these keys
-                
+
                 // Update all key states first
                 boolean[] pageUpState = {pageUpKeyPreviouslyPressed};
                 boolean[] pageDownState = {pageDownKeyPreviouslyPressed};
@@ -481,14 +480,14 @@ public class AudibleCameraMod implements ClientModInitializer {
                 boolean[] rightState = {rightKeyPreviouslyPressed};
                 boolean[] upState = {upKeyPreviouslyPressed};
                 boolean[] downState = {downKeyPreviouslyPressed};
-                
+
                 boolean pageUpPressed = wasKeyJustPressed(client, InputConstants.KEY_PAGEUP, pageUpState);
                 boolean pageDownPressed = wasKeyJustPressed(client, InputConstants.KEY_PAGEDOWN, pageDownState);
                 boolean leftPressed = wasKeyJustPressed(client, InputConstants.KEY_LEFT, leftState);
                 boolean rightPressed = wasKeyJustPressed(client, InputConstants.KEY_RIGHT, rightState);
                 boolean upPressed = wasKeyJustPressed(client, InputConstants.KEY_UP, upState);
                 boolean downPressed = wasKeyJustPressed(client, InputConstants.KEY_DOWN, downState);
-                
+
                 // Update state tracking
                 pageUpKeyPreviouslyPressed = pageUpState[0];
                 pageDownKeyPreviouslyPressed = pageDownState[0];
@@ -496,14 +495,13 @@ public class AudibleCameraMod implements ClientModInitializer {
                 rightKeyPreviouslyPressed = rightState[0];
                 upKeyPreviouslyPressed = upState[0];
                 downKeyPreviouslyPressed = downState[0];
-                
+
                 // Vertical movement (Page Up/Down - completely separate from arrows)
                 if (pageUpPressed && currentTime - lastVerticalMovementTime >= MOVEMENT_COOLDOWN_MS) {
                     newPosition = cameraPosition.above();
                     moved = true;
                     lastVerticalMovementTime = currentTime;
-                }
-                else if (pageDownPressed && currentTime - lastVerticalMovementTime >= MOVEMENT_COOLDOWN_MS) {
+                } else if (pageDownPressed && currentTime - lastVerticalMovementTime >= MOVEMENT_COOLDOWN_MS) {
                     newPosition = cameraPosition.below();
                     moved = true;
                     lastVerticalMovementTime = currentTime;
@@ -513,8 +511,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                     newPosition = getLeftPosition(client, cameraPosition);
                     moved = true;
                     lastLeftRightMovementTime = currentTime;
-                }
-                else if (rightPressed && currentTime - lastLeftRightMovementTime >= MOVEMENT_COOLDOWN_MS) {
+                } else if (rightPressed && currentTime - lastLeftRightMovementTime >= MOVEMENT_COOLDOWN_MS) {
                     newPosition = getRightPosition(client, cameraPosition);
                     moved = true;
                     lastLeftRightMovementTime = currentTime;
@@ -524,19 +521,18 @@ public class AudibleCameraMod implements ClientModInitializer {
                     newPosition = getForwardPosition(client, cameraPosition);
                     moved = true;
                     lastForwardBackwardMovementTime = currentTime;
-                }
-                else if (downPressed && currentTime - lastForwardBackwardMovementTime >= MOVEMENT_COOLDOWN_MS) {
+                } else if (downPressed && currentTime - lastForwardBackwardMovementTime >= MOVEMENT_COOLDOWN_MS) {
                     newPosition = getBackwardPosition(client, cameraPosition);
                     moved = true;
                     lastForwardBackwardMovementTime = currentTime;
                 }
-                
+
                 if (moved) {
                     // Check if new position is within 16 block range
                     if (client.player == null) return; // Micro-safety check before getBlockPos()
                     BlockPos playerPos = client.player.blockPosition();
                     double distance = Math.sqrt(newPosition.distSqr(playerPos));
-                    
+
                     if (distance <= 16.0) {
                         cameraPosition = newPosition;
                         announceBlock(client, cameraPosition);
@@ -551,22 +547,22 @@ public class AudibleCameraMod implements ClientModInitializer {
             }
         });
     }
-    
+
     private BlockPos getStartPosition(Minecraft client) {
         if (client.player == null) return BlockPos.ZERO;
         if (startAtHeadLevel) {
             // Use actual eye position for true head level
             Vec3 eyePos = client.player.getEyePosition();
-            return new BlockPos((int)eyePos.x, (int)eyePos.y, (int)eyePos.z);
+            return new BlockPos((int) eyePos.x, (int) eyePos.y, (int) eyePos.z);
         } else {
             // Feet level = block player is standing on
             return client.player.blockPosition().below();
         }
     }
-    
+
     private BlockPos getForwardPosition(Minecraft client, BlockPos pos) {
         if (client.player == null) return pos.north();
-        
+
         // Forward movement is always horizontal only, regardless of eye/foot level
         if (cardinalDirections) {
             return pos.north();
@@ -576,10 +572,10 @@ public class AudibleCameraMod implements ClientModInitializer {
             return pos.relative(facing);
         }
     }
-    
+
     private BlockPos getBackwardPosition(Minecraft client, BlockPos pos) {
         if (client.player == null) return pos.south();
-        
+
         // Backward movement is always horizontal only, regardless of eye/foot level
         if (cardinalDirections) {
             return pos.south();
@@ -588,10 +584,10 @@ public class AudibleCameraMod implements ClientModInitializer {
             return pos.relative(facing);
         }
     }
-    
+
     private BlockPos getLeftPosition(Minecraft client, BlockPos pos) {
         if (client.player == null) return pos.west();
-        
+
         // Left/right movement is always horizontal regardless of eye/foot level
         if (cardinalDirections) {
             return pos.west();
@@ -601,10 +597,10 @@ public class AudibleCameraMod implements ClientModInitializer {
             return pos.relative(left);
         }
     }
-    
+
     private BlockPos getRightPosition(Minecraft client, BlockPos pos) {
         if (client.player == null) return pos.east();
-        
+
         // Left/right movement is always horizontal regardless of eye/foot level
         if (cardinalDirections) {
             return pos.east();
@@ -614,12 +610,12 @@ public class AudibleCameraMod implements ClientModInitializer {
             return pos.relative(right);
         }
     }
-    
+
     private void scanArea(Minecraft client, BlockPos center) {
         if (client == null || client.level == null || client.player == null) return;
-        
+
         client.player.displayClientMessage(Component.literal("Scanning 3x3x3 area..."), true);
-        
+
         // Pre-scan blocks on main thread for thread safety
         java.util.List<ScanResult> scanResults = new java.util.ArrayList<>();
         for (int x = -1; x <= 1; x++) {
@@ -627,15 +623,15 @@ public class AudibleCameraMod implements ClientModInitializer {
                 for (int z = -1; z <= 1; z++) {
                     BlockPos scanPos = center.offset(x, y, z);
                     BlockState blockState = client.level.getBlockState(scanPos);
-                    
+
                     // Skip if solid blocks only and this isn't solid (including air)
                     if (solidBlocksOnly && !blockState.isSolid()) continue;
-                    
+
                     String blockName = blockState.getBlock().getName().getString();
                     if (blockName.toLowerCase().endsWith(" block")) {
                         blockName = blockName.substring(0, blockName.length() - 6);
                     }
-                    
+
                     String direction = "";
                     if (x < 0) direction += "west ";
                     else if (x > 0) direction += "east ";
@@ -644,28 +640,28 @@ public class AudibleCameraMod implements ClientModInitializer {
                     if (z < 0) direction += "north ";
                     else if (z > 0) direction += "south ";
                     if (direction.isEmpty()) direction = "center ";
-                    
+
                     scanResults.add(new ScanResult(scanPos, blockState, blockName, direction.trim()));
                 }
             }
         }
-        
+
         // Stop any existing scan thread first (prevent thread leaks)
         if (scanThread != null && scanThread.isAlive()) {
             scanThread.interrupt();
         }
-        
+
         // Create properly managed thread for spatial audio scanning  
         scanThread = new Thread(() -> {
             try {
                 int delayMs = 500;
-                
+
                 for (ScanResult result : scanResults) {
                     // Check if thread was interrupted (clean shutdown)
                     if (Thread.currentThread().isInterrupted()) {
                         return;
                     }
-                    
+
                     // Send message and play positioned sound on main thread (no client capture)
                     Minecraft.getInstance().execute(() -> {
                         Minecraft currentClient = Minecraft.getInstance();
@@ -676,7 +672,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                     });
                     Thread.sleep(delayMs);
                 }
-                
+
                 // Final completion sound (if not interrupted)
                 if (!Thread.currentThread().isInterrupted()) {
                     Minecraft.getInstance().execute(() -> {
@@ -686,23 +682,23 @@ public class AudibleCameraMod implements ClientModInitializer {
                         }
                     });
                 }
-                
+
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt(); // Restore interrupt status
             }
         }, "AudibleCamera-Scanner");
-        
+
         scanThread.setDaemon(true); // Allow JVM to exit cleanly
         scanThread.start();
     }
-    
+
     // Helper class for thread-safe scanning
     private static class ScanResult {
         final BlockPos pos;
         final BlockState blockState;
         final String blockName;
         final String direction;
-        
+
         ScanResult(BlockPos pos, BlockState blockState, String blockName, String direction) {
             this.pos = pos;
             this.blockState = blockState;
@@ -710,48 +706,48 @@ public class AudibleCameraMod implements ClientModInitializer {
             this.direction = direction;
         }
     }
-    
+
     private void announceCurrentPosition(Minecraft client, BlockPos pos) {
         if (client.player == null) return;
-        
+
         BlockPos playerPos = client.player.blockPosition();
         int deltaX = pos.getX() - playerPos.getX();
         int deltaY = pos.getY() - playerPos.getY();
         int deltaZ = pos.getZ() - playerPos.getZ();
-        
+
         double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-        
+
         StringBuilder announcement = new StringBuilder("Camera position: ");
-        
+
         if (distance > 0.1) {
             announcement.append(String.format("%.1f blocks ", distance));
-            
+
             if (deltaX > 0) announcement.append("east ");
             else if (deltaX < 0) announcement.append("west ");
-            
+
             if (deltaZ > 0) announcement.append("south ");
             else if (deltaZ < 0) announcement.append("north ");
-            
+
             if (deltaY > 0) announcement.append("up ");
             else if (deltaY < 0) announcement.append("down ");
-            
+
             announcement.append("from player. ");
         } else {
             announcement.append("at player position. ");
         }
-        
+
         announcement.append(pos.getX()).append(" ").append(pos.getY()).append(" ").append(pos.getZ());
-        
+
         client.player.displayClientMessage(Component.literal(announcement.toString()), true);
         playSound(client, SoundEvents.NOTE_BLOCK_BELL.value(), 0.5f, 1.2f);
     }
-    
+
     private void announceBlock(Minecraft client, BlockPos pos) {
         Level world = client.level;
         if (world == null || client.player == null) return;
-        
+
         BlockState blockState = world.getBlockState(pos);
-        
+
         // Skip if solid blocks only and this isn't solid (including air)
         if (solidBlocksOnly && !blockState.isSolid()) {
             // For solid blocks only mode, find the next solid block in the same direction
@@ -772,40 +768,40 @@ public class AudibleCameraMod implements ClientModInitializer {
             }
             return;
         }
-        
+
         Block block = blockState.getBlock();
         String blockName = block.getName().getString();
-        
+
         // Remove "Block" suffix if it exists for conciseness
         if (blockName.toLowerCase().endsWith(" block")) {
             blockName = blockName.substring(0, blockName.length() - 6);
         }
-        
+
         // Create concise announcement: "BlockName, distance direction, coords"
         StringBuilder announcement = new StringBuilder(blockName);
-        
+
         // Calculate relative position to player
         BlockPos playerPos = client.player.blockPosition();
         int deltaX = pos.getX() - playerPos.getX();
         int deltaY = pos.getY() - playerPos.getY();
         int deltaZ = pos.getZ() - playerPos.getZ();
-        
+
         // Add relative direction if enabled and not at player position
         if (showDirections && (deltaX != 0 || deltaY != 0 || deltaZ != 0)) {
             announcement.append(", ");
-            
+
             // Calculate horizontal and vertical distances separately for clearer announcements
             double horizontalDistance = Math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
             int verticalDistance = Math.abs(deltaY);
-            
+
             // Build direction description
             StringBuilder directionDesc = new StringBuilder();
-            
+
             // Add direction (relative to player facing or absolute)
             if (relativeDirections && client.player != null) {
                 // Relative directions based on player's facing
                 Direction playerFacing = client.player.getDirection();
-                
+
                 // Calculate relative directions
                 switch (playerFacing) {
                     case NORTH: // Player facing north
@@ -837,19 +833,19 @@ public class AudibleCameraMod implements ClientModInitializer {
                 // Absolute directions (north/south/east/west)
                 if (deltaX > 0) directionDesc.append("east ");
                 else if (deltaX < 0) directionDesc.append("west ");
-                
+
                 if (deltaZ > 0) directionDesc.append("south");
                 else if (deltaZ < 0) directionDesc.append("north");
             }
-            
+
             // Add horizontal distance if there's horizontal movement
             if (horizontalDistance > 0.1) {
                 announcement.append(String.format("%.1f blocks ", horizontalDistance));
             }
-            
+
             // Add direction
             announcement.append(directionDesc);
-            
+
             // Add vertical distance separately if there's vertical movement
             if (verticalDistance > 0) {
                 if (horizontalDistance > 0.1) {
@@ -861,33 +857,33 @@ public class AudibleCameraMod implements ClientModInitializer {
                 else announcement.append(" down");
             }
         }
-        
+
         // Add light level if enabled
         if (showLightLevel) {
             int lightLevel = world.getMaxLocalRawBrightness(pos);
             announcement.append(", light ").append(lightLevel);
         }
-        
+
         // Add coordinates if enabled
         if (showCoordinates) {
             announcement.append(", ").append(pos.getX()).append(" ").append(pos.getY()).append(" ").append(pos.getZ());
         }
-        
+
         Component message = Component.literal(announcement.toString());
         client.player.displayClientMessage(message, true);
-        
+
         // Play positioned sound based on block type and Y level
         playPositionedSound(client, pos, blockState);
     }
-    
+
     private void playPositionedSound(Minecraft client, BlockPos pos, BlockState blockState) {
         if (client.player == null || client.level == null) return;
-        
+
         // Choose sound based on block type and material
         // Fixed dirt sound issues: using gravel step sound with enhanced volume and pitch for better spatial audio
         net.minecraft.sounds.SoundEvent soundEvent;
         String blockName = blockState.getBlock().getName().getString().toLowerCase();
-        
+
         if (blockState.isAir()) {
             // Air sound - using a soft pop sound that works with spatial audio
             soundEvent = SoundEvents.GLASS_PLACE;
@@ -897,8 +893,8 @@ public class AudibleCameraMod implements ClientModInitializer {
         } else if (blockName.contains("lava")) {
             // Lava sound for lava blocks (lower pitched)
             soundEvent = SoundEvents.LAVA_POP;
-        } else if (blockName.contains("stone") || blockName.contains("cobblestone") || blockName.contains("granite") || 
-                   blockName.contains("diorite") || blockName.contains("andesite") || blockName.contains("deepslate")) {
+        } else if (blockName.contains("stone") || blockName.contains("cobblestone") || blockName.contains("granite") ||
+                blockName.contains("diorite") || blockName.contains("andesite") || blockName.contains("deepslate")) {
             // Stone materials - use note block sound
             soundEvent = SoundEvents.NOTE_BLOCK_BASS.value();
         } else if (blockName.contains("glass") || blockName.contains("crystal")) {
@@ -914,62 +910,62 @@ public class AudibleCameraMod implements ClientModInitializer {
             // Everything else (grass, wood, metal, etc.) - grass step sound
             soundEvent = SoundEvents.GRASS_STEP;
         }
-        
+
         // Calculate pitch based on Y level using half-tone changes
         float basePitch = 1.0f;
         float yOffset = pos.getY() - 64.0f; // Center around sea level
         // Use half-tone changes for more audible pitch differences (each half-tone is ~1.059x)
-        float pitch = Math.max(0.3f, Math.min(2.5f, basePitch * (float)Math.pow(1.059, yOffset / 4.0f)));
-        
+        float pitch = Math.max(0.3f, Math.min(2.5f, basePitch * (float) Math.pow(1.059, yOffset / 4.0f)));
+
         // Special pitch adjustments for different block types
         if (blockState.isAir()) {
-            pitch = 0.8f * (float)Math.pow(1.059, yOffset / 4.0f); // Air pitch changes with Y level using half-tones
+            pitch = 0.8f * (float) Math.pow(1.059, yOffset / 4.0f); // Air pitch changes with Y level using half-tones
         } else if (blockName.contains("lava")) {
             pitch = Math.max(0.2f, pitch * 0.5f); // Lower pitch for lava (danger sound)
         } else if (blockName.contains("water")) {
             pitch = Math.max(0.6f, pitch * 1.2f); // Slightly higher pitch for water
-        } else if (blockName.contains("stone") || blockName.contains("cobblestone") || blockName.contains("granite") || 
-                   blockName.contains("diorite") || blockName.contains("andesite") || blockName.contains("deepslate")) {
+        } else if (blockName.contains("stone") || blockName.contains("cobblestone") || blockName.contains("granite") ||
+                blockName.contains("diorite") || blockName.contains("andesite") || blockName.contains("deepslate")) {
             // Stone blocks get more dramatic pitch changes using half-tones
-            pitch = Math.max(0.4f, Math.min(2.0f, 0.8f * (float)Math.pow(1.059, yOffset / 3.0f)));
+            pitch = Math.max(0.4f, Math.min(2.0f, 0.8f * (float) Math.pow(1.059, yOffset / 3.0f)));
         } else if (blockName.contains("dirt")) {
             // Dirt blocks get more pronounced pitch changes for better audibility
-            pitch = Math.max(0.5f, Math.min(2.2f, 0.9f * (float)Math.pow(1.059, yOffset / 3.5f)));
+            pitch = Math.max(0.5f, Math.min(2.2f, 0.9f * (float) Math.pow(1.059, yOffset / 3.5f)));
         }
-        
+
         // Calculate volume based on distance from player position
         if (client.player == null) return; // Safety check before getting position
         BlockPos playerPos = client.player.blockPosition();
         double distance = Math.sqrt(pos.distSqr(playerPos));
-        
+
         // Don't play sounds beyond 16 block range
         if (distance > 16.0) {
             return; // Outside audible range
         }
-        
+
         // Volume calculation with gradual falloff - improved for better distance perception
         float volume;
         if (distance <= 4.0) {
             volume = 1.0f; // Full volume very close
         } else if (distance <= 8.0) {
             // Gradual falloff from 1.0 to 0.85 over 4-8 blocks
-            volume = 1.0f - (float)(distance - 4.0) * 0.15f / 4.0f;
+            volume = 1.0f - (float) (distance - 4.0) * 0.15f / 4.0f;
         } else if (distance <= 16.0) {
             // Gradual falloff from 0.85 to 0.6 over 8-16 blocks
-            volume = 0.85f - (float)(distance - 8.0) * 0.25f / 8.0f;
+            volume = 0.85f - (float) (distance - 8.0) * 0.25f / 8.0f;
         } else {
             // Should not reach here due to range check above
             volume = 0.6f;
         }
         volume = Math.max(0.5f, Math.min(1.0f, volume)); // Clamp volume to valid range with lower minimum
-        
+
         // Simplified volume multipliers for the new sound categories
         if (blockState.isAir()) {
             volume *= 0.6f; // Softer air volume for the new sound
         } else if (blockName.contains("lava")) {
             volume *= 1.2f; // Louder lava (danger warning)
-        } else if (blockName.contains("stone") || blockName.contains("cobblestone") || blockName.contains("granite") || 
-                   blockName.contains("diorite") || blockName.contains("andesite") || blockName.contains("deepslate")) {
+        } else if (blockName.contains("stone") || blockName.contains("cobblestone") || blockName.contains("granite") ||
+                blockName.contains("diorite") || blockName.contains("andesite") || blockName.contains("deepslate")) {
             volume *= 1.0f; // Full stone volume
         } else if (blockName.contains("glass") || blockName.contains("crystal")) {
             volume *= 0.8f; // Louder glass volume
@@ -985,30 +981,30 @@ public class AudibleCameraMod implements ClientModInitializer {
             // Everything else (grass, wood, metal, etc.) - grass volume
             volume *= 1.0f; // Full grass volume
         }
-        
+
         // Play positioned sound for spatial audio
         if (client.level == null) return; // Micro-safety check before world access
-        
+
         // Play sound from the actual block position for proper spatial audio
         Vec3 soundPos = Vec3.atCenterOf(pos);
         client.level.playSound(
-            client.player,
-            soundPos.x, soundPos.y, soundPos.z,
-            soundEvent,
-            SoundSource.MASTER,
-            volume,
-            pitch
+                client.player,
+                soundPos.x, soundPos.y, soundPos.z,
+                soundEvent,
+                SoundSource.MASTER,
+                volume,
+                pitch
         );
     }
-    
+
     private BlockPos findNextSolidBlock(Minecraft client, BlockPos startPos) {
         if (client.level == null || client.player == null) return null;
-        
+
         // We need to determine the direction of movement
         // Since we don't have the previous position easily accessible, 
         // we'll search in the direction the player is facing first, then expand
         Direction playerFacing = client.player.getDirection();
-        
+
         // Search in the direction the player is facing first
         for (int distance = 1; distance <= 16; distance++) {
             BlockPos candidate = startPos.relative(playerFacing, distance);
@@ -1017,7 +1013,7 @@ public class AudibleCameraMod implements ClientModInitializer {
                 return candidate;
             }
         }
-        
+
         // If no solid block found in facing direction, search in all horizontal directions
         for (int distance = 1; distance <= 16; distance++) {
             for (Direction dir : Direction.Plane.HORIZONTAL) {
@@ -1029,12 +1025,12 @@ public class AudibleCameraMod implements ClientModInitializer {
                 }
             }
         }
-        
+
         // If still no solid block found, check vertical directions
         for (int distance = 1; distance <= 16; distance++) {
             BlockPos upCandidate = startPos.above(distance);
             BlockPos downCandidate = startPos.below(distance);
-            
+
             if (client.level.getBlockState(upCandidate).isSolid()) {
                 return upCandidate;
             }
@@ -1042,18 +1038,18 @@ public class AudibleCameraMod implements ClientModInitializer {
                 return downCandidate;
             }
         }
-        
+
         return null; // No solid block found within range
     }
-    
+
     private void playSound(Minecraft client, net.minecraft.sounds.SoundEvent sound, float volume, float pitch) {
         if (client.player != null) {
             client.player.playSound(sound, volume, pitch);
         }
     }
-    
+
     // Page Up/Down system eliminates need for Alt key detection - much simpler and bulletproof!
-    
+
     // Public method for the mixin
     public static boolean isCameraActive() {
         return cameraActive;
