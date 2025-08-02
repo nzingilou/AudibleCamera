@@ -4,7 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [
-    "KeyboardMixin"
+    "KeyboardHandlerMixin"
   ],
   "injectors": {
     "defaultRequire": 1
