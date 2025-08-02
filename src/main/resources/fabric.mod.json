@@ -15,7 +15,7 @@
   "environment": "client",
   "entrypoints": {
     "client": [
-      "com.audiblecamera.AudibleCameraMod"
+      "io.github.nzingilou.audiblecamera.AudibleCameraMod"
     ]
   },
   "mixins": [

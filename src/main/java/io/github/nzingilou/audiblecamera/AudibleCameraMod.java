@@ -1,4 +1,4 @@
-package com.audiblecamera;
+package io.github.nzingilou.audiblecamera;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;

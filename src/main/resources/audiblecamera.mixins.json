@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.audiblecamera.mixin",
+  "package": "io.github.nzingilou.audiblecamera.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [],
   "client": [

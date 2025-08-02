@@ -1,6 +1,6 @@
-package com.audiblecamera.mixin;
+package io.github.nzingilou.audiblecamera.mixin;
 
-import com.audiblecamera.AudibleCameraMod;
+import io.github.nzingilou.audiblecamera.AudibleCameraMod;
 import net.minecraft.client.Keyboard;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;

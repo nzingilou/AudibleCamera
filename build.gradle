@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.11-SNAPSHOT'
+    alias(libs.plugins.fabricLoom)
     id 'maven-publish'
 }
 
@@ -30,10 +30,10 @@ dependencies {
     // To change the versions see the gradle.properties file
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation libs.fabricLoader
 
     // Fabric API - direct dependency approach (most reliable)
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    modImplementation libs.fabricApi
 }
 
 processResources {
