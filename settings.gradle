@@ -9,6 +9,8 @@ pluginManagement {
     repositories {
         // Fabric
         maven { url "https://maven.fabricmc.net/" }
+        //parchment mappings
+        maven { url = 'https://maven.parchmentmc.org' }
         // Gradle Plugin Portal
         gradlePluginPortal()
         // Maven Central
